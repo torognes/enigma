@@ -31,4 +31,12 @@ For the reflector, wheels, ring position and start position, a dot (.)
 works as a wild card, leaving it unspecified. When these settings are not
 specified, the program will try all combinations to find the settings
 resulting in the highest plaintext score. If asked for, a hill climbing
-algorithm will be used to try to determine the plugboard settings.```
+algorithm will be used to try to determine the plugboard settings.
+```
+
+The files with the ngram frequencies for various languages have been obtained from the
+[Practical cryptograhy](http://practicalcryptography.com/cryptanalysis/letter-frequencies-various-languages/)
+website. Additional languages are available there.
+
+The hill climbing strategy is based on the algorithms described in the
+[publications by Frode Weierud et al.](http://cryptocellar.org/Enigma/)
