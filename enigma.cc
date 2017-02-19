@@ -24,11 +24,13 @@ char * opt_steckerbrett;
 char * opt_logfilename;
 char * opt_plaintext; /* plaintext to compare to */
 char * opt_language; /* german (default), english, danish, french, ... */
+int opt_norenigma; /* use the 5 Norenigma (Norway Enigma) wheels */
 int opt_maxwheel;
 int opt_scoring;
 int opt_threads;
 int opt_hillclimb;
 
+/* uwwwrrrggg = 3*8*7*6*26*26*26*26*26*26 = 311 387 102 208 */
 
 const char * reflector_string[] =
   {
@@ -421,10 +423,20 @@ void init_steckerbrett_direct(const char * steckerbrett_string)
 
 void init_walzen(int u, int a, int b, int c)
 {
-  ukw = u;
-  walzenlage[0] = a;
-  walzenlage[1] = b;
-  walzenlage[2] = c;
+  if (opt_norenigma)
+    {
+      ukw = 3+u;
+      walzenlage[0] = 8+a;
+      walzenlage[1] = 8+b;
+      walzenlage[2] = 8+c;
+    }
+  else
+    {
+      ukw = u;
+      walzenlage[0] = a;
+      walzenlage[1] = b;
+      walzenlage[2] = c;
+    }
 }
 
 void init_ring_grund(int a, int b, int c, int x, int y, int z)
@@ -658,10 +670,10 @@ void showconfig()
 {
   fprintf(stderr, 
           "W: %c%d%d%d R: %c%c%c G: %c%c%c ",
-          num2char(ukw),
-          walzenlage[0] + 1,
-          walzenlage[1] + 1,
-          walzenlage[2] + 1,
+          num2char(ukw + (opt_norenigma ? 10 : 0)),
+          walzenlage[0] + (opt_norenigma ? -7 : 1),
+          walzenlage[1] + (opt_norenigma ? -7 : 1),
+          walzenlage[2] + (opt_norenigma ? -7 : 1),
           num2char(ringstellung[0]),
           num2char(ringstellung[1]),
           num2char(ringstellung[2]),
@@ -943,13 +955,21 @@ void bruteforce()
   int r_min[3], r_max[3];
   int g_min[3], g_max[3];
 
-  if (opt_ukw[0] == '.')
+  if (opt_norenigma)
     {
       u_min = 0;
-      u_max = 2;
+      u_max = 0;
     }
   else
-    u_min = u_max = char2num(opt_ukw[0]);
+    {
+      if (opt_ukw[0] == '.')
+        {
+          u_min = 0;
+          u_max = 2;
+        }
+      else
+        u_min = u_max = char2num(opt_ukw[0]);
+    }
 
   for(int i=0; i<3; i++)
     {
@@ -1102,7 +1122,7 @@ void alltoupper(char * text)
 
 void version()
 {
-  printf("Enigma version 1.0\n");
+  printf("Enigma cipher tool version 1.0\n");
   printf("Copyright (C) 2017 Torbjørn Rognes\n");
   printf("\n");
 }
@@ -1113,9 +1133,10 @@ void help()
   printf("Usage: enigma [OPTIONS]\n");
   printf("  -h           Show help information\n");
   printf("  -v           Show version information\n");
-  printf("  -u X         Reflector (umkehrwalze) X (A-C or .) [.]\n");
+  printf("  -u X         Reflector (umkehrwalze) X (A-C, N or .) [.]\n");
   printf("  -w XYZ       Wheels (walzen) XYZ (1-8 or .) [...]\n");
   printf("  -x integer   Highest wheel number to use (1-8) [5]\n");
+  printf("  -n           Use the Norway Enigma reflector (N) and wheels (1-5)\n");
   printf("  -r XYZ       Ring positions (ringstellung) XYZ (A-Z or .) [AA.]\n");
   printf("  -g XYZ       Start positions (grundstellung) XYZ (A-Z or .) [...]\n");
   printf("  -s ABYZ      Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]\n");
@@ -1152,6 +1173,12 @@ void removespaces(char * p)
 
 int main(int argc, char * * argv)
 {
+  if (argc == 1)
+    {
+      help();
+      exit(1);
+    }
+
   /* set default arguments */
   opt_ukw = (char*) ".";
   opt_walzen = (char*)"...";
@@ -1165,11 +1192,12 @@ int main(int argc, char * * argv)
   opt_scoring = 4;
   opt_logfilename = 0;
   opt_threads = 1;
+  opt_norenigma = 0;
 
   /* get arguments */
 
   int c;
-  while ((c = getopt(argc, argv, "u:w:r:g:s:p:l:imbtqxcvh")) != -1)
+  while ((c = getopt(argc, argv, "u:w:r:g:s:p:l:imbtqxcvhn")) != -1)
     {
       switch (c)
         {
@@ -1228,6 +1256,9 @@ int main(int argc, char * * argv)
           help();
           exit(0);
           break;
+        case 'n':
+          opt_norenigma = 1;
+          break;
         default:
           printf("usage\n");
           break;
@@ -1239,13 +1270,32 @@ int main(int argc, char * * argv)
   
   /* validate arguments */
   
-  if ((strlen(opt_ukw) != 1) ||
-      (strspn(opt_ukw, "ABC.") != 1))
-    fatal("Illegal ukw string (must be A, B, C or .)");
+  if (opt_norenigma)
+    {
+      if ((strlen(opt_ukw) != 1) ||
+          (strspn(opt_ukw, "N.") != 1))
+        fatal("Illegal ukw string (must be N or .)");
 
-  if ((strlen(opt_walzen) != 3) ||
-      (strspn(opt_walzen, "12345678.") != 3))
-    fatal("Illegal walzen string (must be 3 digits (1-8) or .)");
+      if ((strlen(opt_walzen) != 3) ||
+          (strspn(opt_walzen, "12345.") != 3))
+        fatal("Illegal walzen string (must be 3 digits (1-5) or .)");
+
+      if ((opt_maxwheel < 3) || (opt_maxwheel > 5))
+        fatal("Illegal max wheel (must be 3 to 5)");
+    }
+  else
+    {
+      if ((strlen(opt_ukw) != 1) ||
+          (strspn(opt_ukw, "ABC.") != 1))
+        fatal("Illegal ukw string (must be A, B, C or .)");
+
+      if ((strlen(opt_walzen) != 3) ||
+          (strspn(opt_walzen, "12345678.") != 3))
+        fatal("Illegal walzen string (must be 3 digits (1-8) or .)");
+
+      if ((opt_maxwheel < 3) || (opt_maxwheel > 8))
+        fatal("Illegal max wheel (must be 3-8)");
+    }
 
   if ((strlen(opt_ringstellung) != 3) ||
       (strspn(opt_ringstellung, "ABCDEFGHIJKLMNOPQRSTUVWXYZ.") != 3))
@@ -1256,11 +1306,10 @@ int main(int argc, char * * argv)
     fatal("Illegal grundstellung string (must be 3 letters (A-Z) or .)");
 
   if ((strlen(opt_steckerbrett) > 26) ||
-      (strspn(opt_steckerbrett, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") < strlen(opt_steckerbrett)))
+      (strspn(opt_steckerbrett, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") <
+       strlen(opt_steckerbrett)))
     fatal("Illegal steckerbrett string (must be up to 13 letter pairs)");
 
-  if ((opt_maxwheel < 3) || (opt_maxwheel > 8))
-    fatal("Illegal max wheel (must be 3 to 8)");
 
   /* read ciphertext */
   
