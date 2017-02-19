@@ -82,7 +82,7 @@ const char * notch_string[] =
 
 const int alphabet_size = 26;
 const int wheels = 3;
-const int reflector_count = sizeof(notch_string) / sizeof(char *);
+const int reflector_count = sizeof(reflector_string) / sizeof(char *);
 const int rotor_count = sizeof(rotor_string) / sizeof(char *);
 
 int rotor_fwd[rotor_count][alphabet_size];
