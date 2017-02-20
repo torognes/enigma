@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <tmmintrin.h>
 
 const int maxlen = 10240;
 char ciphertext[maxlen+1];
@@ -85,18 +86,28 @@ const int wheels = 3;
 const int reflector_count = sizeof(reflector_string) / sizeof(char *);
 const int rotor_count = sizeof(rotor_string) / sizeof(char *);
 
-int rotor_fwd[rotor_count][alphabet_size];
-int rotor_rev[rotor_count][alphabet_size];
-int notch[rotor_count][alphabet_size];
-int reflector[reflector_count][alphabet_size];
-int steckerbrett[alphabet_size];
+unsigned char rotor_fwd[rotor_count][alphabet_size];
+unsigned char rotor_rev[rotor_count][alphabet_size];
+unsigned char notch[rotor_count][alphabet_size];
+unsigned char reflector[reflector_count][alphabet_size];
+unsigned char steckerbrett[alphabet_size];
 
 int ukw;
 int walzenlage[wheels];
-int grundstellung[wheels];
-int ringstellung[wheels];
+unsigned char grundstellung[wheels];
+unsigned char ringstellung[wheels];
 
-int num_ciphertext[maxlen];
+unsigned char num_ciphertext[maxlen];
+unsigned char num_plaintext[maxlen];
+
+unsigned char subst_array[alphabet_size][alphabet_size][alphabet_size][alphabet_size];
+unsigned char mapping[maxlen][26];
+
+double monograms[26];
+double bigrams[26][26];
+double trigrams[26][26][26];
+double quadgrams[26][26][26][26];
+
 
 void fatal(const char * message)
 {
@@ -113,8 +124,6 @@ inline char num2char(int x)
 {
   return 65 + x;
 }
-
-double monograms[26];
 
 void monograms_read()
 {
@@ -162,7 +171,6 @@ void monograms_read()
   fclose(f);
 }
 
-double bigrams[26][26];
 
 void bigrams_read()
 {
@@ -213,7 +221,6 @@ void bigrams_read()
   fclose(f);
 }
 
-double trigrams[26][26][26];
 
 void trigrams_read()
 {
@@ -270,8 +277,6 @@ void trigrams_read()
       for(int k=0; k<26; k++)
         trigrams[i][j][k] = log10(trigrams[i][j][k] / total);
 }
-
-double quadgrams[26][26][26][26];
 
 void quadgrams_read()
 {
@@ -511,11 +516,6 @@ inline int step(int x)
   return substitute(x);
 }
 
-int subst_array[alphabet_size][alphabet_size][alphabet_size][alphabet_size];
-
-int mapping[maxlen+1][26];
-
-
 inline int step_precomputed(int x)
 {
   step_rotors();
@@ -524,11 +524,6 @@ inline int step_precomputed(int x)
                       [mod26(grundstellung[1]-ringstellung[1])]
                       [mod26(grundstellung[2]-ringstellung[2])]
                       [steckerbrett[x]]];
-}
-
-inline int step_mapped(int i, int x)
-{
-  return steckerbrett[mapping[i][steckerbrett[x]]];
 }
 
 void precompute()
@@ -564,7 +559,21 @@ void setup_mapping(int textlength)
     }
 }
 
-void decode(int textlength, char * ciphertext, char * plaintext)
+inline void map(int len,
+                unsigned char * source,
+                unsigned char * map,
+                unsigned char * dest)
+{
+  for (int i = 0; i < len; i++)
+    dest[i] = map[26*i + source[i]];
+}
+
+inline int step_mapped(int i, int x)
+{
+  return steckerbrett[mapping[i][steckerbrett[x]]];
+}
+
+inline void decode(int textlength, char * ciphertext, char * plaintext)
 {
   for (int i = 0; i < textlength; i++)
     plaintext[i] = num2char(step_mapped(i, num_ciphertext[i]));
@@ -573,16 +582,155 @@ void decode(int textlength, char * ciphertext, char * plaintext)
   plaintext[textlength] = 0;
 }
 
-double quadgram_score_decode(int textlength)
+inline void map16_step(unsigned char * source,
+                       unsigned char * map,
+                       unsigned char * dest)
 {
-#if 0
-  /* SIMD version */
+  for (int i = 0; i < 16; i++)
+    dest[i] = map[26*i+source[i]];
+}
 
-  load 16 byte values and perform substitution
+inline void map16_direct(unsigned char * source,
+                         unsigned char * map,
+                         unsigned char * dest)
+{
+  /* performs a mapping of the bytes in source (values 0-31)
+     through the mapping at map (32 bytes) */
+
+#if 0
+
+  for (int i = 0; i < 16; i++)
+    dest[i] = map[source[i]];
+
+#else
+
+  __m128i x, y, a, t0, t1, t2, m0, m1, t6, t7, t8, t9, t12;
+
+  x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+                   0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
+
+  y = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+                   0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
+
+  a  = _mm_loadu_si128((__m128i*)source);
+  t0 = _mm_and_si128(a, x);
+  t1 = _mm_slli_epi16(t0, 3);
+  t2 = _mm_xor_si128(t1, y);
+  m0 = _mm_or_si128(a, t1);
+  m1 = _mm_or_si128(a, t2);
+
+  t6  = _mm_loadu_si128((__m128i*)(map+00));
+  t7  = _mm_loadu_si128((__m128i*)(map+16));
+  t8  = _mm_shuffle_epi8(t6, m0);
+  t9  = _mm_shuffle_epi8(t7, m1);
+  t12 = _mm_or_si128(t8, t9);
+  _mm_store_si128((__m128i*)(dest), t12);
+
+  /*
+
+    SIMD version
+
+    load 16 byte values and perform substitution
+
     read 16 bytes of letters
     use as permute index
     perform permutation as with protein subst matrix
-    pcmpgt, permute 0-15, permute 16-25, or together
+    pcmpgt/and, permute 0-15, permute 16-25, or together
+
+
+    See dprofile_shuffle in search7.cc in swipe
+
+    make masks for shuffle with bit 7 set (or reset) if byte >= 16
+
+    x0 = load 16 bytes from source
+    t0 = x0 and with 16 bytes of 0x10
+    t1 = t0 shift left 3
+    t2 = t1 xor with 16 bytes of 0x80
+    m0 = x0 or t1
+    m1 = x0 or t2
+
+    x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+                     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
+
+    y = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+                     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
+
+    a  = _mm_load_si128(source);
+    t0 = _mm_and_si128(a, x);
+    t1 = _mm_slli_epi16(t0, 3);
+    t2 = _mm_xor_si128(t1, y);
+    m0 = _mm_or_si128(a, t1);
+    m1 = _mm_or_si128(a, t2);
+
+    load 32 bytes of map
+    shuffle first 16 bytes with mask m0
+    shuffle seconds 16 bytes with mask m1
+    or them together
+
+    t6  = _mm_load_si128((__m128i*)(map+0));
+    t7  = _mm_load_si128((__m128i*)(map+1));
+    t8  = _mm_shuffle_epi8(t6, m0);
+    t9  = _mm_shuffle_epi8(t7, m1);
+    t12 = _mm_or_si128(t8,  t9);
+    _mm_store_si128((__m128i*)(dprofile)+4*j,   t12);
+
+    11 ops to load, map and save 16 bytes of data
+
+  */
+#endif
+
+}
+
+void showit(const char * msg, unsigned char * p)
+{
+#if 0
+  fprintf(stderr, "%s:", msg);
+  for(int i=0; i<16; i++)
+    fprintf(stderr, " %2d", p[i]);
+  fprintf(stderr, "\n");
+#endif
+}
+
+inline void decode_num()
+{
+#if 0
+  for (int i = 0; i < textlength; i++)
+    num_plaintext[i] = step_mapped(i, num_ciphertext[i]);
+#else
+#if 0
+  showit("cipher", num_ciphertext);
+  for (int i = 0; i < textlength; i++)
+    num_plaintext[i] = steckerbrett[mapping[i][steckerbrett[num_ciphertext[i]]]];
+  showit("plain ", num_plaintext);
+  fprintf(stderr, "\n");
+#else
+
+  for (int i = 0; i < textlength; i += 16)
+    {
+      unsigned char temp1[16];
+      unsigned char temp2[16];
+      showit("cipher", num_ciphertext+i);
+      map16_direct(num_ciphertext+i, steckerbrett, temp1);
+      showit("steck ", temp1);
+      map16_step(temp1, ((unsigned char *)(&mapping[i])), temp2);
+      showit("mapped", temp2);
+      map16_direct(temp2, steckerbrett, num_plaintext+i);
+      showit("plain ", num_plaintext+i);
+      //      fprintf(stderr, "\n");
+    }
+
+#endif
+#endif
+}
+
+double quadgram_score_decode(int textlength)
+{
+  /* This decode and scoring function uses 99% of the computation time
+     when hill-climbing. */
+
+  decode_num();
+
+  /*
 
   load triplet scores
     load 16 bytes at adr
@@ -593,11 +741,7 @@ double quadgram_score_decode(int textlength)
     add/or together
     gather from triplet score table
 
-#endif
-
-  int num_plaintext[textlength];
-  for (int i = 0; i < textlength; i++)
-    num_plaintext[i] = step_mapped(i, num_ciphertext[i]);
+  */
 
   double score = 0.0;
   for (int i=0; i<textlength-3; i++)
@@ -608,9 +752,7 @@ double quadgram_score_decode(int textlength)
 
 double trigram_score_decode(int textlength)
 {
-  int num_plaintext[textlength];
-  for (int i = 0; i < textlength; i++)
-    num_plaintext[i] = step_mapped(i, num_ciphertext[i]);
+  decode_num();
   
   double score = 0.0;
   for (int i=0; i<textlength-2; i++)
@@ -620,9 +762,7 @@ double trigram_score_decode(int textlength)
 
 double bigram_score_decode(int textlength)
 {
-  int num_plaintext[textlength];
-  for (int i = 0; i < textlength; i++)
-    num_plaintext[i] = step_mapped(i, num_ciphertext[i]);
+  decode_num();
 
   double score = 0.0;
   for (int i=0; i<textlength-1; i++)
@@ -632,9 +772,11 @@ double bigram_score_decode(int textlength)
 
 double monogram_score_decode(int textlength)
 {
+  decode_num();
+
   double score = 0.0;
   for (int i = 0; i < textlength; i++)
-    score += monograms[step_mapped(i, num_ciphertext[i])];
+    score += monograms[num_plaintext[i]];
   return score;
 }
 
@@ -1260,7 +1402,9 @@ int main(int argc, char * * argv)
           opt_norenigma = 1;
           break;
         default:
-          printf("usage\n");
+          fprintf(stderr, "\n");
+          help();
+          exit(1);
           break;
         }
     }
