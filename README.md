@@ -13,7 +13,7 @@ Usage: enigma [OPTIONS]
   -n           Use the Norway Enigma reflector (N) and wheels (1-5)
   -r XYZ       Ring positions (ringstellung) XYZ (A-Z or .) [AA.]
   -g XYZ       Start positions (grundstellung) XYZ (A-Z or .) [...]
-  -s ABYZ      Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]
+  -s AB...     Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]
   -c           Perform hill climbing to determine plugboard settings
   -l language  Plaintext language (german, english, danish, french) [german]
   -i           Use index of coincidence (IC) to determine plaintext score
