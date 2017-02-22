@@ -1,4 +1,4 @@
-# Enigma cipher breaker
+# Enigma cipher tool
 
 ```
 Enigma cipher tool version 1.0
@@ -41,3 +41,5 @@ website. Additional languages are available there.
 
 The hill climbing strategy is based on the algorithms described in the
 [publications by Frode Weierud et al.](http://cryptocellar.org/Enigma/)
+
+The software is available under the GNU GPL version 3 license.
