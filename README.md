@@ -9,7 +9,7 @@ Usage: enigma [OPTIONS]
   -v           Show version information
   -u X         Reflector (umkehrwalze) X (A-C, N or .) [.]
   -w XYZ       Wheels (walzen) XYZ (1-8 or .) [...]
-  -x integer   Highest wheel number to use (1-8) [5]
+  -x integer   Highest wheel number to use (3-8) [5]
   -n           Use the Norway Enigma reflector (N) and wheels (1-5)
   -r XYZ       Ring positions (ringstellung) XYZ (A-Z or .) [AA.]
   -g XYZ       Start positions (grundstellung) XYZ (A-Z or .) [...]
