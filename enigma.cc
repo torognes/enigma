@@ -11,29 +11,9 @@
 #include <fcntl.h>
 #include <tmmintrin.h>
 
-const int maxlen = 10240;
-char ciphertext[maxlen+1];
-char plaintext[maxlen+1];
-char altplaintext[maxlen+1];
-int textlength;
-  
-char * opt_ukw;
-char * opt_walzen;
-char * opt_ringstellung;
-char * opt_grundstellung;
-char * opt_steckerbrett;
-char * opt_logfilename;
-char * opt_plaintext; /* plaintext to compare to */
-char * opt_language; /* german (default), english, danish, french, ... */
-int opt_norenigma; /* use the 5 Norenigma (Norway Enigma) wheels */
-int opt_maxwheel;
-int opt_scoring;
-int opt_threads;
-int opt_hillclimb;
-
 /* uwwwrrrggg = 3*8*7*6*26*26*26*26*26*26 = 311 387 102 208 */
 
-const char * reflector_string[] =
+static const char * reflector_string[] =
   {
     "EJMZALYXVBWFCRQUONTSPIKHGD",    // A
     "YRUHQSLDPXNGOKMIEBFZCWVJAT",    // B
@@ -43,7 +23,7 @@ const char * reflector_string[] =
     "RDOBJNTKVEHMLFCWZAXGYIPSUQ"     // UKW-c M4 thin
   };
 
-const char * rotor_string[] = 
+static const char * rotor_string[] = 
   {
     "EKMFLGDQVZNTOWYHXUSPAIBRCJ",  // i
     "AJDKSIRUXBLHWTMCQGZNPYFVOE",  // ii
@@ -62,7 +42,7 @@ const char * rotor_string[] =
     "FSOKANUERHMBTIYCWLQPZXVGJD"   // Gamma
   };
 
-const char * notch_string[] =
+static const char * notch_string[] =
   {
     "Q",
     "E",
@@ -81,33 +61,51 @@ const char * notch_string[] =
     ""
   };
 
-const int alphabet_size = 26;
-const int wheels = 3;
-const int reflector_count = sizeof(reflector_string) / sizeof(char *);
-const int rotor_count = sizeof(rotor_string) / sizeof(char *);
+static const int maxlen = 10240;
+static const int asize = 26;
+static const int wheels = 3;
+static const int reflector_count = sizeof(reflector_string) / sizeof(char *);
+static const int rotor_count = sizeof(rotor_string) / sizeof(char *);
 
-unsigned char rotor_fwd[rotor_count][alphabet_size];
-unsigned char rotor_rev[rotor_count][alphabet_size];
-unsigned char notch[rotor_count][alphabet_size];
-unsigned char reflector[reflector_count][alphabet_size];
-unsigned char steckerbrett[alphabet_size];
+static char * opt_ukw;
+static char * opt_walzen;
+static char * opt_ringstellung;
+static char * opt_grundstellung;
+static char * opt_steckerbrett;
+static char * opt_logfilename;
+static char * opt_plaintext; /* plaintext to compare to */
+static char * opt_language; /* german (default), english, danish, french ... */
+static int opt_norenigma; /* use the 5 Norenigma (Norway Enigma) wheels */
+static int opt_maxwheel;
+static int opt_scoring;
+static int opt_threads;
+static int opt_hillclimb;
 
-int ukw;
-int walzenlage[wheels];
-unsigned char grundstellung[wheels];
-unsigned char ringstellung[wheels];
+static char ciphertext[maxlen+1];
+static char plaintext[maxlen+1];
+static char altplaintext[maxlen+1];
+static int textlength;
 
-unsigned char num_ciphertext[maxlen];
-unsigned char num_plaintext[maxlen];
+static unsigned char rotor_fwd[rotor_count][asize];
+static unsigned char rotor_rev[rotor_count][asize];
+static unsigned char notch[rotor_count][asize];
+static unsigned char reflector[reflector_count][asize];
+static unsigned char steckerbrett[asize];
 
-unsigned char subst_array[alphabet_size][alphabet_size][alphabet_size][alphabet_size];
-unsigned char mapping[maxlen][26];
+static int ukw;
+static int walzenlage[wheels];
+static unsigned char grundstellung[wheels];
+static unsigned char ringstellung[wheels];
 
-double monograms[26];
-double bigrams[26][26];
-double trigrams[26][26][26];
-double quadgrams[26][26][26][26];
+static unsigned char num_ciphertext[maxlen];
+static unsigned char num_plaintext[maxlen];
+static unsigned char subst_array[asize][asize][asize][asize];
+static unsigned char mapping[maxlen][26];
 
+static double monograms[26];
+static double bigrams[26][26];
+static double trigrams[26][26][26];
+static double quadgrams[26][26][26][26];
 
 void fatal(const char * message)
 {
@@ -166,7 +164,7 @@ void monograms_read()
     }
 
   for(int i=0; i<26; i++)
-      monograms[i] = log10(monograms[i] / total);
+    monograms[i] = log10(monograms[i]);
 
   fclose(f);
 }
@@ -216,7 +214,7 @@ void bigrams_read()
 
   for(int i=0; i<26; i++)
     for(int j=0; j<26; j++)
-      bigrams[i][j] = log10(bigrams[i][j] / total);
+      bigrams[i][j] = log10(bigrams[i][j]);
 
   fclose(f);
 }
@@ -275,7 +273,7 @@ void trigrams_read()
   for(int i=0; i<26; i++)
     for(int j=0; j<26; j++)
       for(int k=0; k<26; k++)
-        trigrams[i][j][k] = log10(trigrams[i][j][k] / total);
+        trigrams[i][j][k] = log10(trigrams[i][j][k]);
 }
 
 void quadgrams_read()
@@ -284,9 +282,9 @@ void quadgrams_read()
     for(int j=0; j<26; j++)
       for(int k=0; k<26; k++)
         for(int l=0; l<26; l++)
-          quadgrams[i][j][k][l] = 1.0;
+          quadgrams[i][j][k][l] = 1;
 
-  double total = 26*26*26*26;
+  unsigned int total = 26*26*26*26;
   
   FILE * f;
   
@@ -335,7 +333,7 @@ void quadgrams_read()
     for(int j=0; j<26; j++)
       for(int k=0; k<26; k++)
         for(int l=0; l<26; l++)
-          quadgrams[i][j][k][l] = log10(quadgrams[i][j][k][l] / total);
+          quadgrams[i][j][k][l] = log10(quadgrams[i][j][k][l]);
 }
 
 
@@ -378,11 +376,11 @@ double monogram_score(char * text, int len)
 
 double ic_score(char * text, int len)
 {
-  int freq[26];
+  double freq[26];
   for(int j=0; j<26; j++)
     freq[j] = 0;
   for(int i=0; i<len; i++)
-    freq[char2num(text[i])]++;
+    freq[char2num(text[i])] += 1.0;
   double score = 0.0;
   for(int j=1; j<26; j++)
     score += freq[j-1] * freq[j];
@@ -392,7 +390,7 @@ double ic_score(char * text, int len)
 void init()
 {
   for (int i=0; i < rotor_count; i++)
-    for (int j=0; j < alphabet_size; j++)
+    for (int j=0; j < asize; j++)
       {
         rotor_fwd[i][j] = char2num(rotor_string[i][j]);
         rotor_rev[i][j] = index(rotor_string[i],num2char(j)) - rotor_string[i];
@@ -400,13 +398,13 @@ void init()
       }
 
   for (int i=0; i < reflector_count; i++)
-    for (int j=0; j < alphabet_size; j++)
+    for (int j=0; j < asize; j++)
       reflector[i][j] = char2num(reflector_string[i][j]);
 }
 
 void init_steckerbrett(const char * steckerbrett_string)
 {
-  for (int j=0; j < alphabet_size; j++)
+  for (int j=0; j < asize; j++)
     steckerbrett[j] = j;
 
   int plug_count = strlen(steckerbrett_string) / 2;
@@ -422,7 +420,7 @@ void init_steckerbrett(const char * steckerbrett_string)
 
 void init_steckerbrett_direct(const char * steckerbrett_string)
 {
-  for (int j=0; j < alphabet_size; j++)
+  for (int j=0; j < asize; j++)
     steckerbrett[j] = char2num(steckerbrett_string[j]);
 }
 
@@ -457,18 +455,18 @@ void init_ring_grund(int a, int b, int c, int x, int y, int z)
 char rotor_l(int x, int rotor_no)
 {
   int y = grundstellung[rotor_no] - ringstellung[rotor_no];
-  x = (x + alphabet_size + y) % alphabet_size;
+  x = (x + asize + y) % asize;
   x = rotor_fwd[walzenlage[rotor_no]][x];
-  x = (x + alphabet_size - y) % alphabet_size;
+  x = (x + asize - y) % asize;
   return x;
 }
 
 char rotor_r(int x, int rotor_no)
 {
   int y = grundstellung[rotor_no] - ringstellung[rotor_no];
-  x = (x + alphabet_size + y) % alphabet_size;
+  x = (x + asize + y) % asize;
   x = rotor_rev[walzenlage[rotor_no]][x];
-  x = (x + alphabet_size - y) % alphabet_size;
+  x = (x + asize - y) % asize;
   return x;
 }
 
@@ -531,12 +529,12 @@ void precompute()
   int r1 = 0;
   int r2 = 0;
   int r3 = 0;
-  for (int g1 = 0; g1 < alphabet_size; g1++)
-    for (int g2 = 0; g2 < alphabet_size; g2++)
-      for (int g3 = 0; g3 < alphabet_size; g3++)
+  for (int g1 = 0; g1 < asize; g1++)
+    for (int g2 = 0; g2 < asize; g2++)
+      for (int g3 = 0; g3 < asize; g3++)
         {
           init_ring_grund(r1, r2, r3, g1, g2, g3);
-          for (int x = 0; x < alphabet_size; x++)
+          for (int x = 0; x < asize; x++)
             subst_array[g1][g2][g3][x] = subst_rotors(x);
         }
 }
@@ -604,13 +602,15 @@ inline void map16_direct(unsigned char * source,
 
 #else
 
-  __m128i x, y, a, t0, t1, t2, m0, m1, t6, t7, t8, t9, t12;
+  const __m128i x = _mm_set_epi8
+    (0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
 
-  x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-                   0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
+  const __m128i y = _mm_set_epi8
+    (0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
 
-  y = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-                   0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
+  __m128i a, t0, t1, t2, m0, m1, t6, t7, t8, t9, t12;
 
   a  = _mm_loadu_si128((__m128i*)source);
   t0 = _mm_and_si128(a, x);
@@ -1277,11 +1277,11 @@ void help()
   printf("  -v           Show version information\n");
   printf("  -u X         Reflector (umkehrwalze) X (A-C, N or .) [.]\n");
   printf("  -w XYZ       Wheels (walzen) XYZ (1-8 or .) [...]\n");
-  printf("  -x integer   Highest wheel number to use (1-8) [5]\n");
+  printf("  -x integer   Highest wheel number to use (3-8) [5]\n");
   printf("  -n           Use the Norway Enigma reflector (N) and wheels (1-5)\n");
   printf("  -r XYZ       Ring positions (ringstellung) XYZ (A-Z or .) [AA.]\n");
   printf("  -g XYZ       Start positions (grundstellung) XYZ (A-Z or .) [...]\n");
-  printf("  -s ABYZ      Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]\n");
+  printf("  -s AB...     Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]\n");
   printf("  -c           Perform hill climbing to determine plugboard settings\n");
   printf("  -l language  Plaintext language (german, english, danish, french) [german]\n");
   printf("  -i           Use index of coincidence (IC) to determine plaintext score\n");

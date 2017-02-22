@@ -1,15 +1,16 @@
 # Enigma cipher breaker
 
 ```
-Enigma version 1.0
+Enigma cipher tool version 1.0
 Copyright (C) 2017 Torbjørn Rognes
 
 Usage: enigma [OPTIONS]
   -h           Show help information
   -v           Show version information
-  -u X         Reflector (umkehrwalze) X (A-C or .) [.]
+  -u X         Reflector (umkehrwalze) X (A-C, N or .) [.]
   -w XYZ       Wheels (walzen) XYZ (1-8 or .) [...]
   -x integer   Highest wheel number to use (1-8) [5]
+  -n           Use the Norway Enigma reflector (N) and wheels (1-5)
   -r XYZ       Ring positions (ringstellung) XYZ (A-Z or .) [AA.]
   -g XYZ       Start positions (grundstellung) XYZ (A-Z or .) [...]
   -s ABYZ      Plugboard (steckerbrett) letter pairs (A-Z pairs) [none]
