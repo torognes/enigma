@@ -1339,7 +1339,7 @@ int main(int argc, char * * argv)
   /* get arguments */
 
   int c;
-  while ((c = getopt(argc, argv, "u:w:r:g:s:p:l:imbtqxcvhn")) != -1)
+  while ((c = getopt(argc, argv, "u:w:r:g:s:p:l:x:imbtqcvhn")) != -1)
     {
       switch (c)
         {
