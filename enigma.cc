@@ -960,7 +960,7 @@ void ciphertext_letterdist(int textlength, char * ciphertext)
 
   qsort(order, 26, sizeof(int), compare);
 
-#if 1
+#if 0
   fprintf(stderr, "Ciphertext letter order: ");
   for(int j=0; j<26; j++)
     fprintf(stderr, "%c", num2char(order[j]));
