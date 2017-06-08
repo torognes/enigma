@@ -4,7 +4,7 @@ This is a tool to encrypt or decrypt messages using an Enigma cipher machine sim
 
 If you do not know the correct settings for decryption, it can also be used to try out
 a large number of settings and look for plaintext messages that look similar to
-text written in a selected language.
+text written in a selected language, i.e. crack the code.
 
 The settings include the reflector (umkehrwalze) and wheels (walzen) used,
 the ring positions (ringstellung) and start positions (grundstellung),
