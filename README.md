@@ -1,5 +1,21 @@
 # Enigma cipher tool
 
+This is a tool to encrypt or decrypt messages using an Enigma cipher machine simulator.
+
+If you do not know the correct settings for decryption, it can also be used to try out
+a large number of settings and look for plaintext messages that look similar to
+text written in a selected language.
+
+The settings include the reflector (umkehrwalze) and wheels (walzen) used,
+the ring positions (ringstellung) and start positions (grundstellung),
+as well as the position of the plugs in the plugboard (steckerbrett).
+
+Both the common three-wheel Enigma as well as the special Norway Enigma (Norenigma) is supported.
+
+If specified (with the -c option), a hill-climbing algorithm will be used to identify the optimal plugboard configuration.
+
+All possible combinations of the other unspecified settings will be tried.
+
 ```
 Enigma cipher tool version 1.0
 Copyright (C) 2017 Torbjørn Rognes
