@@ -9,7 +9,6 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <tmmintrin.h>
 
 /* uwwwrrrggg = 3*8*7*6*26*26*26*26*26*26 = 311 387 102 208 */
 
@@ -592,93 +591,8 @@ inline void map16_direct(unsigned char * source,
                          unsigned char * map,
                          unsigned char * dest)
 {
-  /* performs a mapping of the bytes in source (values 0-31)
-     through the mapping at map (32 bytes) */
-
-#if 0
-
   for (int i = 0; i < 16; i++)
     dest[i] = map[source[i]];
-
-#else
-
-  const __m128i x = _mm_set_epi8
-    (0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
-
-  const __m128i y = _mm_set_epi8
-    (0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
-
-  __m128i a, t0, t1, t2, m0, m1, t6, t7, t8, t9, t12;
-
-  a  = _mm_loadu_si128((__m128i*)source);
-  t0 = _mm_and_si128(a, x);
-  t1 = _mm_slli_epi16(t0, 3);
-  t2 = _mm_xor_si128(t1, y);
-  m0 = _mm_or_si128(a, t1);
-  m1 = _mm_or_si128(a, t2);
-
-  t6  = _mm_loadu_si128((__m128i*)(map+00));
-  t7  = _mm_loadu_si128((__m128i*)(map+16));
-  t8  = _mm_shuffle_epi8(t6, m0);
-  t9  = _mm_shuffle_epi8(t7, m1);
-  t12 = _mm_or_si128(t8, t9);
-  _mm_store_si128((__m128i*)(dest), t12);
-
-  /*
-
-    SIMD version
-
-    load 16 byte values and perform substitution
-
-    read 16 bytes of letters
-    use as permute index
-    perform permutation as with protein subst matrix
-    pcmpgt/and, permute 0-15, permute 16-25, or together
-
-
-    See dprofile_shuffle in search7.cc in swipe
-
-    make masks for shuffle with bit 7 set (or reset) if byte >= 16
-
-    x0 = load 16 bytes from source
-    t0 = x0 and with 16 bytes of 0x10
-    t1 = t0 shift left 3
-    t2 = t1 xor with 16 bytes of 0x80
-    m0 = x0 or t1
-    m1 = x0 or t2
-
-    x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-                     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
-
-    y = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-                     0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
-
-    a  = _mm_load_si128(source);
-    t0 = _mm_and_si128(a, x);
-    t1 = _mm_slli_epi16(t0, 3);
-    t2 = _mm_xor_si128(t1, y);
-    m0 = _mm_or_si128(a, t1);
-    m1 = _mm_or_si128(a, t2);
-
-    load 32 bytes of map
-    shuffle first 16 bytes with mask m0
-    shuffle seconds 16 bytes with mask m1
-    or them together
-
-    t6  = _mm_load_si128((__m128i*)(map+0));
-    t7  = _mm_load_si128((__m128i*)(map+1));
-    t8  = _mm_shuffle_epi8(t6, m0);
-    t9  = _mm_shuffle_epi8(t7, m1);
-    t12 = _mm_or_si128(t8,  t9);
-    _mm_store_si128((__m128i*)(dprofile)+4*j,   t12);
-
-    11 ops to load, map and save 16 bytes of data
-
-  */
-#endif
-
 }
 
 void showit(const char * msg, unsigned char * p)
