@@ -35,7 +35,7 @@ static const char * rotor_string[] =
     "WTOKASUYVRBXJHQCPZEFMDINLG",  // Norway i
     "GJLPUBSWEMCTQVHXAOFZDRKYNI",  // Norway ii
     "JWFMHNBPUSDYTIXVZGRQLAOEKC",  // Norway iii
-    "ESOVPZJAYQUIRHXLNFTGKDCMWB",  // Norway iv (equal to iv)
+    "FGZJMVXEPBWSHQTLIUDYKCNRAO",  // Norway iv
     "HEJXQOTZBVFDASCILWPGYNMURK",  // Norway v
     "LEYJVCNIXWPBQMDRTAKZGFUHOS",  // Beta
     "FSOKANUERHMBTIYCWLQPZXVGJD"   // Gamma
